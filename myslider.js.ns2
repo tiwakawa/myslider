@@ -1,0 +1,365 @@
+/*
+ *
+ * mySlider
+ *
+ */
+
+(function($) {
+
+  $.fn.mySlider = function(options){
+
+    // set default configuration
+    var defaults = {
+      vertical:    false,
+      speed:       800,
+
+      // pending
+      auto:        true,
+      loop:        true,
+//      auto:        false,
+//      loop:        false,
+
+      pause:       2000,
+      thumbnailID: "thumbnail",
+      nextBtn:     false,
+      prevBtn:     false,
+    };
+
+    // all scopes access is possible
+    var options = $.extend(defaults, options);
+    var castHTML;
+    var castPos = 0;
+    var h_timer;
+
+    // load HTML data
+    getHTML();
+
+    this.each(function() {
+      var slider = $(this);
+      var thumb = $("#" + options.thumbnailID);
+
+      $("li", thumb).each(function(i) {
+        // each thumbnails numbering
+        $(this).attr('class', 'item' + (i+1));
+
+        // bind method for thumbnails
+        $(".item" + (i+1), thumb).click(function() {
+          thumbnailClick(i);
+        })
+      });
+      $("li.item1", thumb).addClass("selected");
+
+      // add prev-btn
+      if(options.prevBtn) {
+        $("#slide-box").before("<div id=\"prev-btn\"><a href=\"javascript:void(0);\"><img src=\"images/slider/btn_prev.gif\" /></a></div>");
+        $("#prev-btn").css("float", "left");
+        bindMoveCastImage("prev");
+      }
+
+      // add next-btn
+      if(options.nextBtn) {
+        $("#slide-box").after("<div id=\"next-btn\"><a href=\"javascript:void(0);\"><img src=\"images/slider/btn_next.gif\" /></a></div>")
+        $("#next-btn").css("float", "left");
+        bindMoveCastImage("next");
+      }
+
+      var size   = $("li", slider).length;
+      var width  = $("li", slider).width();
+      var height = $("li", slider).height();
+
+      slider.width(width);
+      if(!options.vertical) {
+        slider.height(height);
+      } else {
+        slider.height(height/2);
+      }
+
+      slider.css("overflow", "hidden");
+      var ts = size - 1;
+      var t = 0;
+      var preFlashPos = 0;
+
+      $("ul", slider).css('width', size * width);
+      if(!options.vertical) $("li", slider).css('float', 'left');
+
+      /**
+       *
+       * Execute animation.
+       *
+       * @method animate
+       * @return undefined
+       * @param target  {String}
+       * @param clicked {Boolean}
+       *
+       */
+      function animate(target, clicked){
+        var ot = t;
+        switch(target){
+          case "next":
+//            t = (ot >= ts) ? (options.loop ? 0 : ts) : t + 1;
+            t = (ot >= ts) ? 0 : t + 1;
+            break;
+          case "prev":
+            t = (t <= 0) ? (options.loop ? ts : 0) : t - 1;
+            break;
+          case "first":
+            t = 0;
+            break;
+          case "last":
+            t = ts;
+            break;
+          default:
+            break;
+        };
+
+        var diff = Math.abs(ot - t);
+        var speed = options.speed;
+
+
+        // horizontal
+        if(!options.vertical) {
+          if(ot >= ts) {
+
+            h_timer = setTimeout(function(){
+              if(castPos + 1 >= castHTML.length) {
+                castPos = 0;
+              } else {
+                castPos++;
+              }
+              $("#slide-box").html(castHTML[castPos]);
+              slider = $("#slider")
+              thumb = $("#" + options.thumbnailID)
+              init(slider, thumb);
+            }, speed * 0.4);
+
+          } else {
+
+            animatePos = (t * width * -1);
+            $("ul", slider).animate(
+              { marginLeft: animatePos },
+              speed,
+              "swing",
+              function() {
+                $("li", thumb).removeClass("selected");
+                $("li.item" + (t + 1), thumb).addClass("selected");
+              }
+            );
+          }
+
+
+        // vertical
+        } else {
+
+          flashPos = t * height;
+
+          if(ot == 0) {
+            animatePos = (height/2 * -1);
+          } else {
+            animatePos = (preFlashPos + height/2) * -1;
+          }
+
+          $("ul", slider).animate(
+            { marginTop: animatePos },
+            speed,
+            "swing",
+            function() {
+              if(ot >= ts) {
+
+                if(castPos + 1 >= castHTML.length) {
+                  castPos = 0;
+                } else {
+                  castPos++;
+                }
+
+                $("#slide-box").html(castHTML[castPos]);
+                slider = $("#slider")
+                thumb = $("#" + options.thumbnailID)
+                init(slider, thumb);
+
+              }
+
+              $("ul", slider).css("marginTop", flashPos * -1);
+              $("li", thumb).removeClass("selected");
+              $("li.item" + (t + 1), thumb).addClass("selected");
+              preFlashPos = flashPos;
+            }
+          );
+        };
+
+
+        if(clicked) clearTimeout(timer);
+        if(options.auto && target == "next" && !clicked){;
+          timer = setTimeout(function(){
+            animate("next", false);
+          }, options.speed + options.pause);
+        };
+
+      };
+
+
+      /*
+       *
+       * Initialize when html data changes.
+       *
+       */
+      function init(slider, thumb) {
+
+        $("li", thumb).each(function(i) {
+          // each thumbnails numbering
+          $(this).attr('class', 'item' + (i+1));
+
+          // bind method for thumbnails
+          $(".item" + (i+1), thumb).click(function() {
+            thumbnailClick(i);
+          })
+        });
+        $("li.item1", thumb).addClass("selected");
+
+        size   = $("li", slider).length;
+        width  = $("li", slider).width();
+        height = $("li", slider).height();
+
+        slider.width(width);
+        if(!options.vertical) {
+          slider.height(height);
+        } else {
+          slider.height(height/2);
+        }
+
+        slider.css("overflow", "hidden");
+        ts = size - 1;
+        t = 0;
+        preFlashPos = 0;
+
+        $("ul", slider).css('width', size * width);
+        if(!options.vertical) $("li", slider).css('float', 'left');
+
+        flashPos = 0;
+      }
+
+      /**
+       *
+       * Change slider image which you clicked.
+       *
+       */
+      function thumbnailClick(n) {
+        // clear timer
+        clearTimeout(timer);
+        if(h_timer) clearTimeout(h_timer);
+
+        // stop animation
+        $("ul", slider).stop();
+
+        t = n;
+
+        // change slider image
+        if(!options.vertical) {
+          $("ul", slider).css("marginLeft", n * width * -1);
+        } else {
+          $("ul", slider).css("marginTop", n * height * -1);
+          preFlashPos = t * height;
+        }
+
+        // modify CSS
+        $("li", thumb).removeClass("selected");
+        $("li.item" + (n+1), thumb).addClass("selected");
+
+        if(options.auto){;
+          timer = setTimeout(function(){
+            animate("next", false);
+          }, options.pause);
+        };
+
+      }
+
+      // initalize
+      var timer;
+      if(options.auto){;
+        timer = setTimeout(function(){
+          animate("next", false);
+        }, options.pause);
+      };
+
+      /**
+       *
+       * bind prev/next btn click event that move cast image.
+       * 
+       */
+      function bindMoveCastImage(target) {
+        var t_obj;
+
+        switch(target){
+          case "next":
+            t_obj = $("#next-btn a")
+            break;
+          case "prev":
+            t_obj = $("#prev-btn a")
+            break;
+          default:
+            break;
+        };
+
+        t_obj.click(function() {
+          // loading of HTML has not finished yet
+          if(castHTML == void(0)) {
+            return false;
+          }
+
+          clearTimeout(timer);
+          $("ul", slider).stop();
+
+          switch(target){
+            case "next":
+              castPos++;
+              if(castPos >= castHTML.length) {
+                castPos = 0;
+              }
+              break;
+
+            case "prev":
+              castPos--;
+              if(castPos < 0) {
+                castPos = castHTML.length - 1;
+              }
+              break;
+
+            default:
+              break;
+          };
+
+          $("#slide-box").html(castHTML[castPos]);
+          slider = $("#slider")
+          thumb = $("#" + options.thumbnailID)
+          init(slider, thumb);
+
+          if(options.auto){;
+            timer = setTimeout(function(){
+              animate("next", false);
+            }, options.pause);
+          };
+        });
+      }
+    });
+
+    /*
+     *
+     * Load HTML data
+     *
+     */
+    function getHTML() {
+      $.ajax({
+        url: '/get_html',
+        data: { format: "js" },
+        async: true,
+        type: 'get',
+        dataType: 'html',
+        success: function(data) {
+          castHTML = data.split("split");
+        },
+        error: function(xhr, status, err) { $("#slide-box").html("error") }
+      });
+    }
+
+  };
+
+})(jQuery);
